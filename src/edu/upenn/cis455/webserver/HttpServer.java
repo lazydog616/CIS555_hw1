@@ -7,8 +7,8 @@ class HttpServer {
   private static int serverport = 8080;
   public static void main(String args[]) throws IOException, InterruptedException
   {
-	  ThreadPool threadpool = new ThreadPool(42);
-     ServerSocket serversocket = new ServerSocket(serverport);
+	  ThreadPool threadpool = new ThreadPool(3000);
+	  ServerSocket serversocket = new ServerSocket(serverport, 2000);
      new Thread(threadpool).start();
      while(true)
      {

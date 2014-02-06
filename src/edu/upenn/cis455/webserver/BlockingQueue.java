@@ -4,9 +4,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class BlockingQueue {
-	 private List queue = new LinkedList();
-	  private int  limit = 10;
-
+	  private List queue = new LinkedList();
+	  private int  limit = 42;
 	  public BlockingQueue(int limit){
 	    this.limit = limit;
 	  }
