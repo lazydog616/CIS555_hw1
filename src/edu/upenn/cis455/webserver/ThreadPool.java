@@ -6,7 +6,7 @@ import java.util.List;
 public class ThreadPool implements Runnable{
 	private int poolsize = 0;
 	private BlockingQueue pool;
-	//private List<Worker> workers;
+	private List<Worker> workers;
 	public ThreadPool(int size)
 	{
 		pool = new BlockingQueue(size);
@@ -17,7 +17,10 @@ public class ThreadPool implements Runnable{
 	{
 		pool.enqueue(s);
 	}
-	
+	public int GetWorkerAmount()
+	{
+		return this.workers.size();
+	}
 	@Override
 	public void run() {
 		// TODO Auto-generated method stub
@@ -29,6 +32,7 @@ public class ThreadPool implements Runnable{
 				if(s.isConnected())
 				{
 					Worker worker = new Worker(s);
+					workers.add(worker);
 					new Thread(worker).start();
 				}
 			} catch (InterruptedException e) {

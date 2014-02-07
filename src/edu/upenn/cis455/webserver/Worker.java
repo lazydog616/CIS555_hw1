@@ -16,6 +16,7 @@ import java.util.Date;
 public class Worker implements Runnable{
 	private Socket socket;
 	private PrintStream socket_out_printstream;
+	//private ThreadPool owner_threadpool;
 	private SimpleDateFormat date_ft = 
 		      new SimpleDateFormat ("E yyyy.MM.dd 'at' hh:mm:ss a zzz");
 	
@@ -51,6 +52,110 @@ public class Worker implements Runnable{
 	}
 	
 	private void ProcessGETRequest(String[] request)
+	{
+		String file_format = "";
+		String HTTPversion = "HTTP/1.0";//default
+		if(request.length == 3)//normal GET request: GET /path/file or dire HTTP/1.1 or HTTP/1.0
+		{
+			String dire[] = request[1].split("\\.");
+			if(dire.length < 2)//this is a directory request
+			{
+				
+				File homedir = new File(System.getProperty("user.home"));
+				File folder = new File(homedir, request[1]);
+				File dires[] = folder.listFiles();
+				for(int i = 0; i < dires.length; i++)
+				{	
+					socket_out_printstream.println(dires[i].getName());
+				}
+				socket_out_printstream.flush();
+				socket_out_printstream.close();
+				return;
+			}
+			else if(dire.length == 2)  //this is a file request
+			{
+				file_format = dire[1];//second string is format
+				HTTPversion = request[2];
+				//debug message
+				System.out.println(file_format);
+				System.out.println(request[1]);
+				//end debug
+				
+				File homedir = new File(System.getProperty("user.home"));
+				File file = new File(homedir, request[1]);
+				try {
+					FileInputStream file_in = new FileInputStream(file);
+					byte file_content[] = new byte[(int)file.length()];
+					try {
+						file_in.read(file_content);
+						String MIME = GetMIME(file_format);
+						//start write into the outputPrintStream;
+						if(MIME != "null")
+						{
+							socket_out_printstream.println(HTTPversion + " 200 OK");
+							socket_out_printstream.println("Date: " +  date_ft.format(new Date()));
+							socket_out_printstream.println("Content-Type: " + MIME);
+							socket_out_printstream.println("Content-Length: " + Integer.toString((int)file.length()));
+							socket_out_printstream.println("Connection: Close");
+							socket_out_printstream.print("\r\n");
+							socket_out_printstream.write(file_content);
+						}
+						else {
+							socket_out_printstream.println(HTTPversion + " 500 Internal Server Error\n\nFile " + file.getAbsolutePath() + " file formant cannot be read");
+							socket_out_printstream.println("Connection: Close");
+						}
+						socket_out_printstream.flush();
+		    			socket_out_printstream.close();
+						file_in.close();
+						return;
+						
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						socket_out_printstream.println(HTTPversion + " 500 Internal Server Error\n\nFile " + file.getAbsolutePath() + " cannot be read");
+						socket_out_printstream.println("Connection: Close");
+						socket_out_printstream.flush();
+		    			socket_out_printstream.close();
+		    			e.printStackTrace();
+		    			return;
+					}
+					
+					
+				} catch (FileNotFoundException e) {
+					// TODO Auto-generated catch block
+					socket_out_printstream.println(HTTPversion + " 500 Internal Server Error\n\nFile " + file.getAbsolutePath() + " cannot be found");
+					socket_out_printstream.println("Connection: Close");
+					socket_out_printstream.flush();
+					socket_out_printstream.close();
+					e.printStackTrace();
+					return;
+				}
+				
+			}
+			else //file path contain "."
+			{
+				socket_out_printstream.println(HTTPversion + " 400 Bad Request\n\n Path contain illegal symbol");
+				socket_out_printstream.println("Connection: Close");
+				socket_out_printstream.flush();
+				socket_out_printstream.close();
+			}
+		}
+		else if(request.length == 2)//special GET request: GET /shutdown or GET /control
+		{
+			
+		}
+		else
+		{
+			socket_out_printstream.println(HTTPversion + " 400 Bad Request");
+			socket_out_printstream.println("Connection: Close");
+			socket_out_printstream.flush();
+			socket_out_printstream.close();
+			return;
+		}
+		
+		
+	}
+	
+	private void ProcessHEADRequest(String[] request)//similar to ProcessGETRequest
 	{
 		String file_format = "";
 		String HTTPversion = "HTTP/1.0";//default
@@ -95,10 +200,12 @@ public class Worker implements Runnable{
 							socket_out_printstream.println("Date: " +  date_ft.format(new Date()));
 							socket_out_printstream.println("Content-Type: " + MIME);
 							socket_out_printstream.println("Content-Length: " + Integer.toString((int)file.length()));
-							socket_out_printstream.print("\r\n");
-							socket_out_printstream.write(file_content);
+							socket_out_printstream.println("Connection: Close");
 						}
-						else socket_out_printstream.println(HTTPversion + " 500 Internal Server Error\n\nFile " + file.getAbsolutePath() + " file formant cannot be read");
+						else{
+							socket_out_printstream.println(HTTPversion + " 500 Internal Server Error\n\nFile " + file.getAbsolutePath() + " file formant cannot be read");
+							socket_out_printstream.println("Connection: Close");
+						}
 						socket_out_printstream.flush();
 		    			socket_out_printstream.close();
 						file_in.close();
@@ -106,10 +213,11 @@ public class Worker implements Runnable{
 						
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
-						e.printStackTrace();
-						socket_out_printstream.println(HTTPversion + " 500, Internal Server Error\n\nFile " + file.getAbsolutePath() + " cannot be read");
+						socket_out_printstream.println(HTTPversion + " 500 Internal Server Error\n\nFile " + file.getAbsolutePath() + " cannot be read");
+						socket_out_printstream.println("Connection: Close");
 						socket_out_printstream.flush();
 		    			socket_out_printstream.close();
+		    			e.printStackTrace();
 		    			return;
 					}
 					
@@ -117,6 +225,7 @@ public class Worker implements Runnable{
 				} catch (FileNotFoundException e) {
 					// TODO Auto-generated catch block
 					socket_out_printstream.println(HTTPversion + " 500 Internal Server Error\n\nFile " + file.getAbsolutePath() + " cannot be found");
+					socket_out_printstream.println("Connection: Close");
 					socket_out_printstream.flush();
 					socket_out_printstream.close();
 					e.printStackTrace();
@@ -127,17 +236,12 @@ public class Worker implements Runnable{
 		}
 		else
 		{
-			socket_out_printstream.println(HTTPversion + " 400, Bad Request");
+			socket_out_printstream.println(HTTPversion + " 400 Bad Request");
+			socket_out_printstream.println("Connection: Close");
 			socket_out_printstream.flush();
 			socket_out_printstream.close();
 			return;
 		}
-		
-		
-	}
-	
-	private void ProcessHEADRequest(String[] request)
-	{
 		
 	}
 	
@@ -158,9 +262,8 @@ public class Worker implements Runnable{
 	        			break;
 	        case "HEAD": this.ProcessHEADRequest(request);
 	        			break;
-	        default: socket_out_printstream.println("HTTP/1.0 500 Error\n\nNot understood: \""+request+"\"");
-	        //TODO change to the right error code
-	        	
+	        default: socket_out_printstream.println("HTTP/1.0 400 Bad Request\n\nNot understood: \""+request+"\"");
+	       
 	        }
 	        socket.close();
 		} catch (IOException e) {
