@@ -57,10 +57,18 @@ public class Worker implements Runnable{
 		if(request.length == 3)
 		{
 			String dire[] = request[1].split("\\.");
-			if(dire.length < 2)
+			if(dire.length < 2)//this is a directory request
 			{
-				//TODO this is a directory , handle this
-				System.out.println("this is a directory request, do sth");
+				
+				File homedir = new File(System.getProperty("user.home"));
+				File folder = new File(homedir, request[1]);
+				File dires[] = folder.listFiles();
+				for(int i = 0; i < dires.length; i++)
+				{	
+					socket_out_printstream.println(dires[i].getName());
+				}
+				socket_out_printstream.flush();
+				socket_out_printstream.close();
 				return;
 			}
 			else   //this is a file request
@@ -74,7 +82,6 @@ public class Worker implements Runnable{
 				
 				File homedir = new File(System.getProperty("user.home"));
 				File file = new File(homedir, request[1]);
-				//PrintWriter out_printer = new PrintWriter(out); 
 				try {
 					FileInputStream file_in = new FileInputStream(file);
 					byte file_content[] = new byte[(int)file.length()];
@@ -103,6 +110,7 @@ public class Worker implements Runnable{
 						socket_out_printstream.println(HTTPversion + " 500, Internal Server Error\n\nFile " + file.getAbsolutePath() + " cannot be read");
 						socket_out_printstream.flush();
 		    			socket_out_printstream.close();
+		    			return;
 					}
 					
 					
@@ -112,6 +120,7 @@ public class Worker implements Runnable{
 					socket_out_printstream.flush();
 					socket_out_printstream.close();
 					e.printStackTrace();
+					return;
 				}
 				
 			}
